@@ -6,6 +6,8 @@
 <title>Sistema IA · Seguridad e Higiene Laboral — Pamela Mansilla</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#F2F3EF;
@@ -172,10 +174,10 @@
         <textarea id="inputInfo" placeholder="Ej: Establecimiento: Depósito logístico, Rosario. Puesto: Operario de picking. Jornada 8hs. Manipulación de cargas de hasta 22kg, 40 veces por turno. Piso irregular en sector B. Se adjuntan fotos del sector..."></textarea>
 
         <div class="filebox">
-          <label class="block-label" style="margin-bottom:8px;">Adjuntar fotos / planos / PDF</label><br>
-          <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+          <label class="block-label" style="margin-bottom:8px;">Adjuntar archivos (fotos, PDF, Word, Excel...)</label><br>
+          <input type="file" id="fileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.csv" multiple>
           <div class="filelist" id="fileList"></div>
-          <p class="note">Se aceptan imágenes (JPG, PNG) y PDF, que la IA puede leer directamente. Archivos Word, Excel, DWG o DXF: pegá el texto o las mediciones relevantes en el cuadro de arriba, o exportá el plano a PDF/imagen antes de adjuntarlo.</p>
+          <p class="note">Se aceptan imágenes (JPG, PNG), PDF, Word (.docx) y Excel/CSV (.xlsx, .xls, .csv). Word y Excel se procesan directamente en tu navegador: se les extrae el texto/los datos y se agregan automáticamente a la información del caso. Archivos DWG o DXF no se pueden leer todavía: exportá el plano a PDF o imagen antes de adjuntarlo.</p>
         </div>
 
         <div class="actions">
@@ -370,13 +372,53 @@ selectRole(1);
 --------------------------------------------------------- */
 document.getElementById('fileInput').addEventListener('change', async (e)=>{
   for(const file of e.target.files){
-    const b64 = await fileToBase64(file);
-    const kind = file.type === 'application/pdf' ? 'pdf' : 'image';
-    attachedFiles.push({name:file.name, media_type:file.type, data:b64, kind});
+    await procesarArchivo(file);
   }
   renderFileList();
   e.target.value = '';
 });
+
+async function procesarArchivo(file){
+  const lowerName = file.name.toLowerCase();
+
+  try{
+    if(file.type.startsWith('image/')){
+      const b64 = await fileToBase64(file);
+      attachedFiles.push({name:file.name, media_type:file.type, data:b64, kind:'image'});
+
+    } else if(file.type === 'application/pdf' || lowerName.endsWith('.pdf')){
+      const b64 = await fileToBase64(file);
+      attachedFiles.push({name:file.name, media_type:'application/pdf', data:b64, kind:'pdf'});
+
+    } else if(lowerName.endsWith('.docx')){
+      if(typeof mammoth === 'undefined') throw new Error('No se pudo cargar el lector de Word. Revisá tu conexión a internet.');
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({arrayBuffer});
+      attachedFiles.push({name:file.name, kind:'text-extract', extractedText: result.value.trim()});
+
+    } else if(lowerName.endsWith('.doc')){
+      throw new Error('El formato .doc antiguo no se puede leer en el navegador. Guardalo como .docx desde Word y volvé a subirlo.');
+
+    } else if(lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls') || lowerName.endsWith('.csv')){
+      if(typeof XLSX === 'undefined') throw new Error('No se pudo cargar el lector de Excel. Revisá tu conexión a internet.');
+      const arrayBuffer = await file.arrayBuffer();
+      const wb = XLSX.read(arrayBuffer, {type:'array'});
+      let combined = '';
+      wb.SheetNames.forEach(sheetName=>{
+        const sheet = wb.Sheets[sheetName];
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        combined += `--- Hoja: ${sheetName} ---\n${csv}\n\n`;
+      });
+      attachedFiles.push({name:file.name, kind:'text-extract', extractedText: combined.trim()});
+
+    } else {
+      throw new Error(`Formato de "${file.name}" no soportado todavía. Se aceptan imágenes, PDF, Word (.docx) y Excel/CSV.`);
+    }
+  } catch(err){
+    const errorBox = document.getElementById('errorBox');
+    errorBox.innerHTML = `<div class="error-box">${escapeHtml(err.message)}</div>`;
+  }
+}
 
 function fileToBase64(file){
   return new Promise((resolve,reject)=>{
@@ -393,7 +435,8 @@ function renderFileList(){
   attachedFiles.forEach((f,i)=>{
     const row = document.createElement('div');
     row.className = 'f';
-    row.innerHTML = `<span>${f.name}</span>`;
+    const tag = f.kind === 'text-extract' ? ' (texto extraído automáticamente)' : f.kind === 'image' ? ' (imagen)' : ' (PDF)';
+    row.innerHTML = `<span>${f.name}${tag}</span>`;
     const btn = document.createElement('button');
     btn.textContent = 'quitar';
     btn.addEventListener('click', ()=>{ attachedFiles.splice(i,1); renderFileList(); });
@@ -468,13 +511,21 @@ async function generarInforme(){
   try{
     const role = ROLES[currentRole];
     const systemPrompt = BASE_SYSTEM_PROMPT + "\n\n" + role.prompt;
-    const userText = info || 'Analizar únicamente el material adjunto.';
+
+    let userText = info || '';
+    const textExtracts = attachedFiles.filter(f=>f.kind==='text-extract');
+    textExtracts.forEach(f=>{
+      userText += `\n\n--- Contenido extraído de "${f.name}" ---\n${f.extractedText}`;
+    });
+    if(!userText.trim()) userText = 'Analizar únicamente el material adjunto.';
+
+    const binaryFiles = attachedFiles.filter(f=>f.kind==='image' || f.kind==='pdf');
 
     let html;
     if(provider === 'gemini'){
-      html = await callGemini(systemPrompt, userText, apiKey);
+      html = await callGemini(systemPrompt, userText, apiKey, binaryFiles);
     } else {
-      html = await callAnthropic(systemPrompt, userText, apiKey);
+      html = await callAnthropic(systemPrompt, userText, apiKey, binaryFiles);
     }
 
     html = stripCodeFences(html);
@@ -493,9 +544,9 @@ async function generarInforme(){
   }
 }
 
-async function callAnthropic(systemPrompt, userText, apiKey){
+async function callAnthropic(systemPrompt, userText, apiKey, binaryFiles){
   const contentBlocks = [];
-  attachedFiles.forEach(f=>{
+  binaryFiles.forEach(f=>{
     if(f.kind === 'image'){
       contentBlocks.push({type:'image', source:{type:'base64', media_type:f.media_type, data:f.data}});
     } else {
@@ -530,9 +581,9 @@ async function callAnthropic(systemPrompt, userText, apiKey){
   return (data.content || []).map(b=>b.text||'').join('\n').trim();
 }
 
-async function callGemini(systemPrompt, userText, apiKey){
+async function callGemini(systemPrompt, userText, apiKey, binaryFiles){
   const parts = [];
-  attachedFiles.forEach(f=>{
+  binaryFiles.forEach(f=>{
     parts.push({inline_data:{mime_type:f.media_type, data:f.data}});
   });
   parts.push({text:userText});
