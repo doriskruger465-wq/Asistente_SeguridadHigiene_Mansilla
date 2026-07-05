@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema IA · Seguridad e Higiene Laboral — Pamela Mansilla</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F3EF;
+    --panel:#FFFFFF;
+    --ink:#132229;
+    --ink-soft:#4B5A60;
+    --steel:#2E4A5C;
+    --steel-dark:#182C36;
+    --line:#D8DCD3;
+    --amber:#E8A33D;
+    --amber-dark:#B97C1F;
+    --brick:#A8402F;
+    --olive:#4C7A5D;
+    --paper:#FBFAF6;
+    --mono:'IBM Plex Mono', monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'IBM Plex Sans', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);}
+  a{color:inherit;}
+
+  .app{display:grid;grid-template-columns:300px 1fr;min-height:100vh;}
+  @media (max-width:900px){.app{grid-template-columns:1fr;}}
+
+  /* SIDEBAR */
+  .sidebar{background:var(--steel-dark);color:#EDEFEA;padding:28px 22px;display:flex;flex-direction:column;gap:22px;}
+  .brand{display:flex;flex-direction:column;gap:4px;border-bottom:1px solid rgba(255,255,255,0.12);padding-bottom:18px;}
+  .brand .tag{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--amber);text-transform:uppercase;}
+  .brand h1{font-family:var(--display);font-size:20px;margin:2px 0 0;line-height:1.25;font-weight:600;}
+  .brand .sub{font-size:12.5px;color:#B9C3C1;margin-top:2px;}
+
+  .block-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9FB0AC;margin-bottom:10px;display:block;}
+
+  .roles{display:flex;flex-direction:column;gap:8px;}
+  .role-btn{display:flex;align-items:flex-start;gap:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:11px 12px;cursor:pointer;text-align:left;transition:.15s ease;}
+  .role-btn:hover{background:rgba(255,255,255,0.09);}
+  .role-btn.active{background:var(--amber);border-color:var(--amber);}
+  .role-btn.active .role-num, .role-btn.active .role-name, .role-btn.active .role-desc{color:var(--steel-dark);}
+  .role-num{font-family:var(--mono);font-size:12px;color:var(--amber);min-width:26px;font-weight:600;padding-top:1px;}
+  .role-name{font-family:var(--display);font-size:13.5px;font-weight:600;color:#EDEFEA;display:block;}
+  .role-desc{font-size:11.5px;color:#B9C3C1;display:block;margin-top:2px;line-height:1.35;}
+
+  .settings{margin-top:auto;border-top:1px solid rgba(255,255,255,0.12);padding-top:16px;}
+  .key-row{display:flex;flex-direction:column;gap:6px;}
+  .key-row input{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:#EDEFEA;border-radius:6px;padding:9px 10px;}
+  .key-row input::placeholder{color:#7F8E8A;}
+  .key-hint{font-size:10.8px;color:#8CA098;line-height:1.4;}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:#7F8E8A;display:inline-block;margin-right:6px;}
+  .status-dot.ok{background:#7FAE8C;}
+  .status-line{font-size:11px;color:#B9C3C1;margin-top:8px;display:flex;align-items:center;}
+
+  /* MAIN */
+  .main{padding:34px 40px 60px;max-width:1180px;}
+  @media (max-width:900px){.main{padding:24px;}}
+
+  .topline{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap;margin-bottom:26px;}
+  .topline h2{font-family:var(--display);font-size:26px;margin:0;font-weight:600;}
+  .topline .role-chip{font-family:var(--mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:20px;color:var(--steel);white-space:nowrap;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start;}
+  @media (max-width:1050px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;}
+  .card h3{font-family:var(--display);font-size:14.5px;margin:0 0 4px;font-weight:600;}
+  .card .card-sub{font-size:12px;color:var(--ink-soft);margin:0 0 16px;}
+
+  textarea{width:100%;min-height:230px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:13px 14px;font-family:var(--body);font-size:13.5px;line-height:1.55;color:var(--ink);background:var(--paper);}
+  textarea:focus{outline:2px solid var(--amber);outline-offset:1px;}
+
+  .filebox{border:1px dashed var(--line);border-radius:8px;padding:14px;margin-top:14px;background:var(--paper);}
+  .filebox input[type=file]{font-size:12px;}
+  .filelist{margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);display:flex;flex-direction:column;gap:4px;}
+  .filelist .f{display:flex;justify-content:space-between;gap:8px;background:#fff;border:1px solid var(--line);padding:4px 8px;border-radius:5px;}
+  .filelist .f button{border:none;background:none;color:var(--brick);cursor:pointer;font-family:var(--mono);font-size:11px;}
+
+  .note{font-size:11.5px;color:var(--ink-soft);margin-top:10px;line-height:1.5;}
+
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  button.primary{background:var(--steel);color:#fff;border:none;border-radius:7px;padding:12px 20px;font-family:var(--display);font-weight:600;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:8px;}
+  button.primary:hover{background:var(--steel-dark);}
+  button.primary:disabled{opacity:.55;cursor:not-allowed;}
+  button.ghost{background:none;border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:12px 18px;font-family:var(--body);font-size:13px;cursor:pointer;}
+  button.ghost:hover{border-color:var(--steel);}
+
+  .spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* REPORT OUTPUT */
+  .report-card{grid-column:1 / -1;}
+  .report-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+  .seal{position:relative;width:78px;height:78px;border:2px solid var(--steel);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transform:rotate(-8deg);}
+  .seal::before{content:'';position:absolute;inset:6px;border:1px dashed var(--amber-dark);border-radius:50%;}
+  .seal-text{font-family:var(--mono);font-size:7.2px;letter-spacing:.05em;text-align:center;color:var(--steel);line-height:1.25;text-transform:uppercase;}
+  .report-meta{display:flex;align-items:center;gap:16px;}
+  .report-meta h3{margin:0;font-size:16px;}
+  .report-meta .meta-sub{font-family:var(--mono);font-size:11px;color:var(--ink-soft);}
+
+  #report{min-height:160px;border:1px solid var(--line);border-radius:8px;padding:26px 28px;background:var(--paper);font-size:14px;line-height:1.7;}
+  #report:empty::before{content:'El informe generado aparecerá aquí. Completá la información, elegí un rol y presioná "Generar informe".';color:#9AA6A0;font-size:13px;}
+  #report[contenteditable="true"]:focus{outline:2px solid var(--amber);outline-offset:2px;}
+  #report h1,#report h2,#report h3{font-family:var(--display);color:var(--steel-dark);}
+  #report h1{font-size:19px;border-bottom:2px solid var(--amber);padding-bottom:6px;margin-top:0;}
+  #report h2{font-size:15.5px;margin-top:24px;}
+  #report h3{font-size:13.5px;margin-top:18px;}
+  #report table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12.5px;}
+  #report table th,#report table td{border:1px solid var(--line);padding:7px 9px;text-align:left;}
+  #report table th{background:#EFEFE8;font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
+  .chip{font-family:var(--mono);font-size:10.5px;padding:2px 8px;border-radius:10px;color:#fff;display:inline-block;}
+  .chip.bajo{background:var(--olive);}
+  .chip.medio{background:var(--amber-dark);}
+  .chip.alto{background:#C2691F;}
+  .chip.critico{background:var(--brick);}
+
+  .error-box{background:#FBEDEA;border:1px solid #E3B3AC;color:#7A2B1E;border-radius:8px;padding:12px 14px;font-size:12.5px;margin-top:14px;}
+
+  footer.hint{margin-top:30px;font-size:11.5px;color:var(--ink-soft);line-height:1.6;border-top:1px solid var(--line);padding-top:16px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="tag">Consultoría Senior · 30+ años</span>
+      <h1>Asistente Técnico IA<br>Seguridad e Higiene</h1>
+      <span class="sub">Responsable profesional: Pamela Mansilla</span>
+    </div>
+
+    <div>
+      <span class="block-label">Rol de trabajo</span>
+      <div class="roles" id="roles"></div>
+    </div>
+
+    <div class="settings">
+      <span class="block-label">Conexión API</span>
+      <div class="key-row">
+        <select id="providerSelect">
+          <option value="gemini">Google Gemini — plan gratuito</option>
+          <option value="anthropic">Claude (Anthropic) — de pago</option>
+        </select>
+        <input type="password" id="apiKey" placeholder="Pegá aquí tu clave gratuita de Gemini">
+        <span class="key-hint" id="keyHint">Clave gratuita de Google AI Studio (aistudio.google.com/apikey). No pide tarjeta. Se usa solo en este navegador y no se guarda en ningún servidor.</span>
+      </div>
+      <div class="status-line" id="statusLine"><span class="status-dot" id="statusDot"></span><span id="statusText">Sin verificar</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topline">
+      <div>
+        <h2>Generador de documentación técnica</h2>
+      </div>
+      <span class="role-chip" id="roleChip">ROL 01 · PROTOCOLO DE ERGONOMÍA</span>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Información del caso</h3>
+        <p class="card-sub">Pegá o escribí todo lo relevante: datos del establecimiento, puesto, mediciones, observaciones de campo, checklist, actas anteriores, etc. Cuanto más completo, más preciso será el informe.</p>
+        <textarea id="inputInfo" placeholder="Ej: Establecimiento: Depósito logístico, Rosario. Puesto: Operario de picking. Jornada 8hs. Manipulación de cargas de hasta 22kg, 40 veces por turno. Piso irregular en sector B. Se adjuntan fotos del sector..."></textarea>
+
+        <div class="filebox">
+          <label class="block-label" style="margin-bottom:8px;">Adjuntar fotos / planos / PDF</label><br>
+          <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+          <div class="filelist" id="fileList"></div>
+          <p class="note">Se aceptan imágenes (JPG, PNG) y PDF, que la IA puede leer directamente. Archivos Word, Excel, DWG o DXF: pegá el texto o las mediciones relevantes en el cuadro de arriba, o exportá el plano a PDF/imagen antes de adjuntarlo.</p>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="genBtn"><span id="genBtnText">Generar informe</span></button>
+          <button class="ghost" id="clearBtn">Limpiar</button>
+        </div>
+        <div id="errorBox"></div>
+      </div>
+
+      <div class="card">
+        <h3 id="roleTitle">Protocolo de Ergonomía</h3>
+        <p class="card-sub" id="roleDesc">Genera el protocolo completo: introducción, normativa, descripción del puesto, método de evaluación, posturas, movimientos repetitivos, manipulación manual de cargas, riesgos, conclusiones, recomendaciones y plan de mejoras.</p>
+        <div id="roleFieldsHost"></div>
+        <p class="note" id="roleExtraNote"></p>
+      </div>
+
+      <div class="card report-card">
+        <div class="report-head">
+          <div class="report-meta">
+            <div class="seal"><div class="seal-text">Seguridad<br>e Higiene<br>· Informe IA ·</div></div>
+            <div>
+              <h3>Informe generado</h3>
+              <span class="meta-sub" id="reportMeta">Editable · listo para exportar</span>
+            </div>
+          </div>
+          <div class="actions" style="margin:0;">
+            <button class="ghost" id="copyBtn">Copiar texto</button>
+            <button class="primary" id="downloadBtn">Descargar (.doc)</button>
+          </div>
+        </div>
+        <div id="report" contenteditable="true"></div>
+      </div>
+    </div>
+
+    <footer class="hint">
+      El texto del informe es completamente editable: hacé clic dentro del recuadro y corregí lo que necesites antes de descargarlo. El archivo descargado se abre directamente en Microsoft Word para su edición y firma final.
+    </footer>
+  </main>
+</div>
+
+<script>
+/* ---------------------------------------------------------
+   BASE DE CONOCIMIENTO / SYSTEM PROMPT
+--------------------------------------------------------- */
+const BASE_SYSTEM_PROMPT = `Actúa como un sistema de Inteligencia Artificial Premium especializado exclusivamente en Seguridad e Higiene Laboral, Higiene Industrial, Ingeniería de Seguridad, Arquitectura Industrial, Protección Contra Incendios, Ergonomía, Riesgos Laborales, Medio Ambiente y elaboración de documentación técnica profesional.
+
+Tu función es trabajar como el asistente privado de Pamela Mansilla, propietaria de una empresa de Seguridad e Higiene Laboral. Nunca respondas como un asistente genérico: actuá siempre como un consultor senior con más de 30 años de experiencia.
+
+Debés generar documentación profesional lista para entregar a clientes, ART, organismos de control, auditorías e inspecciones.
+
+Estilo de redacción obligatorio: profesional, objetivo, formal, técnico, ordenado, sin errores gramaticales, con terminología técnica argentina (normativa de Higiene y Seguridad en el Trabajo de Argentina: Ley 19.587, Decreto 351/79, Resoluciones SRT vigentes, Ley de Riesgos del Trabajo 24.557, y normas IRAM cuando corresponda).
+
+Analizá toda la información y los archivos que se te provean (fotografías, imágenes, PDF, texto de planos, mediciones, checklists, actas). Extraé lo relevante, interpretalo técnicamente y elaborá el documento solicitado. Nunca pidas información que ya pueda deducirse del material cargado; si falta un dato imprescindible, señalalo explícitamente en una sección "Observaciones / datos pendientes" en vez de detener la generación del informe.
+
+Devolvé el informe en HTML simple (usando etiquetas h1, h2, h3, p, ul, li, table, strong), sin explicaciones fuera del documento, listo para pegar en un procesador de texto.`;
+
+const ROLES = {
+  1:{
+    name:"Protocolo de Ergonomía",
+    short:"ROL 01 · PROTOCOLO DE ERGONOMÍA",
+    desc:"Genera el protocolo completo: introducción, normativa, descripción del puesto, método de evaluación, posturas, movimientos repetitivos, manipulación manual de cargas, riesgos, conclusiones, recomendaciones y plan de mejoras.",
+    prompt:`ROL ACTIVO: PROTOCOLO DE ERGONOMÍA.
+Generá un protocolo completo con las siguientes secciones, en este orden:
+1. Introducción
+2. Objetivo
+3. Normativa aplicable
+4. Descripción del establecimiento
+5. Descripción del puesto de trabajo
+6. Método de evaluación utilizado
+7. Análisis de posturas
+8. Análisis de movimientos repetitivos
+9. Manipulación manual de cargas
+10. Identificación de riesgos ergonómicos
+11. Conclusiones
+12. Recomendaciones
+13. Plan de mejoras (con responsables y plazos sugeridos)
+Formato profesional, con tablas cuando el contenido lo permita (por ejemplo, tabla de posturas evaluadas o tabla de plan de mejoras).`
+  },
+  2:{
+    name:"Protocolo de Iluminación",
+    short:"ROL 02 · PROTOCOLO DE ILUMINACIÓN",
+    desc:"Analiza fotografías, planos y mediciones de luxómetro por sector, y genera introducción, normativa, resultados, tabla de mediciones, comparación normativa, conclusiones y recomendaciones.",
+    prompt:`ROL ACTIVO: PROTOCOLO DE ILUMINACIÓN.
+Analizá fotografías, planos y mediciones de luxómetro provistas por sector. Generá:
+1. Introducción
+2. Objetivo
+3. Normativa aplicable (Decreto 351/79 Anexo IV y complementarias)
+4. Descripción del establecimiento y sectores evaluados
+5. Resultados de las mediciones
+6. Tabla de mediciones (sector, punto de medición, valor lux medido, valor lux normativo, cumple/no cumple)
+7. Comparación contra los valores normativos exigidos según tarea visual
+8. Conclusiones
+9. Recomendaciones técnicas
+Si no se provee el detalle numérico de mediciones, generá la tabla con los sectores mencionados y marcá "dato pendiente de medición" en la columna de valor.`
+  },
+  3:{
+    name:"Carga de Fuego",
+    short:"ROL 03 · CARGA DE FUEGO",
+    desc:"Calcula materiales combustibles, poder calorífico, carga de fuego y riesgo por sector, definiendo protecciones: matafuegos, hidrantes y detectores.",
+    prompt:`ROL ACTIVO: CÁLCULO DE CARGA DE FUEGO.
+A partir de los materiales combustibles y cantidades descriptas, calculá y documentá:
+1. Introducción y objetivo
+2. Normativa aplicable (Decreto 351/79 Anexo VII, Código de Edificación / IRAM 3517-3522 según corresponda)
+3. Materiales combustibles identificados y cantidades
+4. Poder calorífico de cada material (Mcal/kg)
+5. Cálculo de carga de fuego por sector (Qf = Σ(pi·Hi)/A, indicando fórmula y resultado en Mcal/m²)
+6. Clasificación del riesgo según carga de fuego obtenida (riesgo leve/moderado/alto)
+7. Sectorización contra incendios recomendada
+8. Protecciones existentes y requeridas: matafuegos (tipo y cantidad según superficie y riesgo), hidrantes, detectores
+9. Conclusión técnica
+Mostrá el cálculo paso a paso en una tabla, no solo el resultado final. Si falta algún dato numérico para calcular, indicá el supuesto utilizado o señalalo como dato pendiente.`
+  },
+  4:{
+    name:"Informe Técnico",
+    short:"ROL 04 · INFORME TÉCNICO",
+    desc:"Informe general completo: portada, índice, objetivo, alcance, descripción, observaciones, incumplimientos, normativa, fotografías, conclusiones, recomendaciones y firma.",
+    prompt:`ROL ACTIVO: INFORME TÉCNICO GENERAL.
+Generá un informe técnico completo con:
+1. Portada (título del informe, empresa/establecimiento, fecha, responsable profesional: Pamela Mansilla)
+2. Índice
+3. Objetivo
+4. Alcance
+5. Descripción del establecimiento / actividad
+6. Observaciones relevadas
+7. Incumplimientos detectados (listados y vinculados a la normativa correspondiente)
+8. Normativa aplicable
+9. Referencia a fotografías / documentación relevada (con su descripción, aunque las imágenes se listen aparte)
+10. Conclusiones
+11. Recomendaciones
+12. Espacio de firma (Responsable profesional en Higiene y Seguridad, matrícula)
+Formato de informe formal para entrega a cliente, ART u organismo de control.`
+  },
+  5:{
+    name:"Nivel de Riesgo",
+    short:"ROL 05 · NIVEL DE RIESGO",
+    desc:"Identifica peligros y evalúa probabilidad, consecuencia y exposición para generar automáticamente una matriz de riesgos profesional con medidas preventivas, correctivas y prioridad.",
+    prompt:`ROL ACTIVO: MATRIZ DE NIVEL DE RIESGO.
+Identificá todos los peligros presentes en la información provista y para cada uno evaluá:
+- Probabilidad
+- Consecuencia
+- Exposición
+- Controles existentes
+- Nivel de riesgo resultante (Bajo / Medio / Alto / Crítico) y su clasificación numérica según método William Fine o matriz de doble entrada (Probabilidad x Consecuencia), indicando el método usado
+- Medidas preventivas
+- Medidas correctivas
+- Prioridad de intervención
+
+Generá:
+1. Introducción y metodología de evaluación utilizada
+2. Matriz de riesgos en formato tabla (columnas: Peligro, Probabilidad, Consecuencia, Exposición, Controles existentes, Nivel de riesgo, Medidas preventivas, Medidas correctivas, Prioridad)
+3. Usá las siguientes clases CSS para colorear el nivel de riesgo dentro de la celda de la tabla, envolviendo el texto así: <span class="chip bajo">BAJO</span>, <span class="chip medio">MEDIO</span>, <span class="chip alto">ALTO</span>, <span class="chip critico">CRÍTICO</span>
+4. Conclusiones generales
+5. Plan de acción priorizado`
+  }
+};
+
+let currentRole = 1;
+let attachedFiles = []; // {name, media_type, data(base64), kind: 'image'|'pdf'}
+
+/* ---------------------------------------------------------
+   RENDER SIDEBAR ROLES
+--------------------------------------------------------- */
+const rolesHost = document.getElementById('roles');
+Object.keys(ROLES).forEach(k=>{
+  const r = ROLES[k];
+  const btn = document.createElement('div');
+  btn.className = 'role-btn' + (Number(k)===currentRole ? ' active':'');
+  btn.dataset.role = k;
+  btn.innerHTML = `<span class="role-num">${k.padStart(2,'0')}</span>
+    <span>
+      <span class="role-name">${r.name}</span>
+      <span class="role-desc">${r.desc.slice(0,70)}...</span>
+    </span>`;
+  btn.addEventListener('click', ()=>selectRole(Number(k)));
+  rolesHost.appendChild(btn);
+});
+
+function selectRole(k){
+  currentRole = k;
+  document.querySelectorAll('.role-btn').forEach(b=>{
+    b.classList.toggle('active', Number(b.dataset.role)===k);
+  });
+  const r = ROLES[k];
+  document.getElementById('roleChip').textContent = r.short;
+  document.getElementById('roleTitle').textContent = r.name;
+  document.getElementById('roleDesc').textContent = r.desc;
+}
+selectRole(1);
+
+/* ---------------------------------------------------------
+   FILE HANDLING
+--------------------------------------------------------- */
+document.getElementById('fileInput').addEventListener('change', async (e)=>{
+  for(const file of e.target.files){
+    const b64 = await fileToBase64(file);
+    const kind = file.type === 'application/pdf' ? 'pdf' : 'image';
+    attachedFiles.push({name:file.name, media_type:file.type, data:b64, kind});
+  }
+  renderFileList();
+  e.target.value = '';
+});
+
+function fileToBase64(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result.split(',')[1]);
+    r.onerror = ()=>reject(new Error('No se pudo leer el archivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+function renderFileList(){
+  const host = document.getElementById('fileList');
+  host.innerHTML = '';
+  attachedFiles.forEach((f,i)=>{
+    const row = document.createElement('div');
+    row.className = 'f';
+    row.innerHTML = `<span>${f.name}</span>`;
+    const btn = document.createElement('button');
+    btn.textContent = 'quitar';
+    btn.addEventListener('click', ()=>{ attachedFiles.splice(i,1); renderFileList(); });
+    row.appendChild(btn);
+    host.appendChild(row);
+  });
+}
+
+/* ---------------------------------------------------------
+   API KEY STATUS + PROVEEDOR
+--------------------------------------------------------- */
+const providerHints = {
+  gemini: {
+    placeholder: 'Pegá aquí tu clave gratuita de Gemini',
+    hint: 'Clave gratuita de Google AI Studio (aistudio.google.com/apikey). No pide tarjeta. Se usa solo en este navegador y no se guarda en ningún servidor.'
+  },
+  anthropic: {
+    placeholder: 'sk-ant-... (tu clave de Anthropic)',
+    hint: 'Clave de pago de console.anthropic.com. Se usa solo en este navegador y no se guarda en ningún servidor. Si estás usando esta app como Artifact dentro de Claude.ai, podés dejar este campo vacío.'
+  }
+};
+
+document.getElementById('providerSelect').addEventListener('change', (e)=>{
+  const p = providerHints[e.target.value];
+  document.getElementById('apiKey').placeholder = p.placeholder;
+  document.getElementById('keyHint').textContent = p.hint;
+  document.getElementById('apiKey').value = '';
+  document.getElementById('statusDot').classList.remove('ok');
+  document.getElementById('statusText').textContent = 'Sin verificar';
+});
+
+document.getElementById('apiKey').addEventListener('input', ()=>{
+  const has = document.getElementById('apiKey').value.trim().length > 0;
+  document.getElementById('statusDot').classList.toggle('ok', has);
+  document.getElementById('statusText').textContent = has ? 'Clave cargada (esta sesión)' : 'Sin verificar';
+});
+
+/* ---------------------------------------------------------
+   GENERAR INFORME
+--------------------------------------------------------- */
+document.getElementById('genBtn').addEventListener('click', generarInforme);
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  document.getElementById('inputInfo').value = '';
+  attachedFiles = [];
+  renderFileList();
+  document.getElementById('report').innerHTML = '';
+  document.getElementById('errorBox').innerHTML = '';
+});
+
+async function generarInforme(){
+  const errorBox = document.getElementById('errorBox');
+  errorBox.innerHTML = '';
+  const info = document.getElementById('inputInfo').value.trim();
+
+  if(!info && attachedFiles.length===0){
+    errorBox.innerHTML = '<div class="error-box">Ingresá información del caso o adjuntá al menos un archivo antes de generar el informe.</div>';
+    return;
+  }
+
+  const provider = document.getElementById('providerSelect').value;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(provider === 'gemini' && !apiKey){
+    errorBox.innerHTML = '<div class="error-box">Falta la clave gratuita de Gemini. Conseguila en <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> (es gratis, no pide tarjeta) y pegala en el panel izquierdo.</div>';
+    return;
+  }
+
+  const genBtn = document.getElementById('genBtn');
+  const genBtnText = document.getElementById('genBtnText');
+  genBtn.disabled = true;
+  genBtnText.innerHTML = '<span class="spinner"></span> Generando informe...';
+
+  try{
+    const role = ROLES[currentRole];
+    const systemPrompt = BASE_SYSTEM_PROMPT + "\n\n" + role.prompt;
+    const userText = info || 'Analizar únicamente el material adjunto.';
+
+    let html;
+    if(provider === 'gemini'){
+      html = await callGemini(systemPrompt, userText, apiKey);
+    } else {
+      html = await callAnthropic(systemPrompt, userText, apiKey);
+    }
+
+    html = stripCodeFences(html);
+    if(!/<h1|<h2|<p|<table/i.test(html)){
+      html = '<p>' + html.replace(/\n/g,'<br>') + '</p>';
+    }
+
+    document.getElementById('report').innerHTML = html;
+    document.getElementById('reportMeta').textContent = `${role.short} · generado ${new Date().toLocaleString('es-AR')}`;
+
+  } catch(err){
+    errorBox.innerHTML = `<div class="error-box"><strong>No se pudo generar el informe.</strong><br>${escapeHtml(err.message)}</div>`;
+  } finally {
+    genBtn.disabled = false;
+    genBtnText.textContent = 'Generar informe';
+  }
+}
+
+async function callAnthropic(systemPrompt, userText, apiKey){
+  const contentBlocks = [];
+  attachedFiles.forEach(f=>{
+    if(f.kind === 'image'){
+      contentBlocks.push({type:'image', source:{type:'base64', media_type:f.media_type, data:f.data}});
+    } else {
+      contentBlocks.push({type:'document', source:{type:'base64', media_type:'application/pdf', data:f.data}});
+    }
+  });
+  contentBlocks.push({type:'text', text:userText});
+
+  const headers = {'Content-Type':'application/json'};
+  if(apiKey){
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers,
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      system: systemPrompt,
+      messages: [{role:'user', content: contentBlocks}]
+    })
+  });
+
+  if(!response.ok){
+    const errText = await response.text();
+    throw new Error(`La API de Anthropic respondió con error ${response.status}. ${errText.slice(0,300)}`);
+  }
+  const data = await response.json();
+  return (data.content || []).map(b=>b.text||'').join('\n').trim();
+}
+
+async function callGemini(systemPrompt, userText, apiKey){
+  const parts = [];
+  attachedFiles.forEach(f=>{
+    parts.push({inline_data:{mime_type:f.media_type, data:f.data}});
+  });
+  parts.push({text:userText});
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const response = await fetch(endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      system_instruction: {parts:[{text:systemPrompt}]},
+      contents: [{role:'user', parts}],
+      generationConfig: {maxOutputTokens: 4000, temperature: 0.4}
+    })
+  });
+
+  if(!response.ok){
+    const errText = await response.text();
+    throw new Error(`La API de Gemini respondió con error ${response.status}. ${errText.slice(0,300)}`);
+  }
+  const data = await response.json();
+  const cand = (data.candidates && data.candidates[0]) || null;
+  if(!cand){
+    throw new Error('Gemini no devolvió contenido. Puede que el material adjunto haya sido bloqueado por el filtro de seguridad; probá reformulando el texto.');
+  }
+  return (cand.content.parts || []).map(p=>p.text||'').join('\n').trim();
+}
+
+function stripCodeFences(s){
+  return s.replace(/^```(?:html)?\s*/i,'').replace(/```\s*$/,'').trim();
+}
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ---------------------------------------------------------
+   COPIAR / DESCARGAR
+--------------------------------------------------------- */
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const text = document.getElementById('report').innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const b = document.getElementById('copyBtn');
+    const old = b.textContent;
+    b.textContent = 'Copiado ✓';
+    setTimeout(()=>b.textContent = old, 1500);
+  });
+});
+
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  const reportEl = document.getElementById('report');
+  if(!reportEl.innerHTML.trim()){
+    return;
+  }
+  const role = ROLES[currentRole];
+  const docHtml = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <style>
+      body{font-family:Calibri, Arial, sans-serif; color:#14232B; font-size:12pt;}
+      h1{font-size:18pt; border-bottom:2px solid #E8A33D; padding-bottom:6px;}
+      h2{font-size:14pt; margin-top:20px;}
+      h3{font-size:12.5pt; margin-top:14px;}
+      table{border-collapse:collapse; width:100%; margin:12px 0;}
+      table td, table th{border:1px solid #999; padding:6px 8px; font-size:10.5pt;}
+      table th{background:#EFEFE8;}
+      .chip{padding:2px 6px; border-radius:8px; color:#fff; font-size:9.5pt;}
+      .bajo{background:#4C7A5D;} .medio{background:#B97C1F;} .alto{background:#C2691F;} .critico{background:#A8402F;}
+    </style></head><body>${reportEl.innerHTML}</body></html>`;
+
+  const blob = new Blob(['\ufeff', docHtml], {type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fname = `Informe_${role.name.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.doc`;
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
